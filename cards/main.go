@@ -1,9 +1,6 @@
 package main
 
-import (
-	"math/rand"
-	"time"
-)
+// "math/rand"
 
 func main() {
 	// cards := newDeck()
@@ -16,7 +13,7 @@ func main() {
 	// 	fmt.Println("Error occurred:", savedResult)
 	// }
 
-	rand.Seed(time.Now().UnixNano())
+	// rand.Seed(time.Now().UnixNano())
 
 	cards := newDeckFromFile("./test.txt")
 	cards.shuffle()
