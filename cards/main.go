@@ -1,15 +1,24 @@
 package main
 
-import "fmt"
+import (
+	"math/rand"
+	"time"
+)
 
 func main() {
-	cards := newDeck()
+	// cards := newDeck()
 
-	hand, remainingDeck := deal(cards, 5)
+	// savedResult := cards.saveToFile("./test.txt")
 
-	fmt.Println("My Hand:")
-	hand.print()
+	// if savedResult == nil {
+	// 	fmt.Println("Wrote file successfully")
+	// } else {
+	// 	fmt.Println("Error occurred:", savedResult)
+	// }
 
-	fmt.Println("\nRemaining Cards:")
-	remainingDeck.print()
+	rand.Seed(time.Now().UnixNano())
+
+	cards := newDeckFromFile("./test.txt")
+	cards.shuffle()
+	cards.print()
 }

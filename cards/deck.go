@@ -1,6 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"strings"
+)
 
 // Create a new type of 'deck'
 // which is a slice of strings
@@ -27,6 +33,34 @@ func (d deck) print() {
 	}
 }
 
+func (d deck) toString() string {
+	return strings.Join([]string(d), ",")
+}
+
 func deal(d deck, handSize int) (deck, deck) {
 	return d[:handSize], d[handSize:]
+}
+
+func (d deck) saveToFile(filename string) error {
+	return ioutil.WriteFile(filename, []byte(d.toString()), 0644)
+}
+
+func newDeckFromFile(filename string) deck {
+	bs, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	return deck(strings.Split(string(bs), ","))
+}
+
+func (d deck) shuffle() {
+	deckLen := len(d)
+	for i := range d {
+		ri := rand.Intn(deckLen - 1)
+
+		d[i], d[ri] = d[ri], d[i]
+	}
 }
