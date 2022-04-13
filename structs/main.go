@@ -1,11 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type person struct {
 	firstName string
 	lastName  string
-	contact   contactInfo
+	contactInfo
 }
 
 type contactInfo struct {
@@ -17,11 +20,22 @@ func main() {
 	jimmy := person{
 		firstName: "Jimmy",
 		lastName:  "Toledo",
-		contact: contactInfo{
+		contactInfo: contactInfo{
 			email:   "jimmy@trucks.com",
 			zipCode: 43056,
 		},
 	}
 
-	fmt.Printf("%+v", jimmy)
+	jimmy.print()
+	jimmy.updateName("")
+}
+
+func (p person) print() {
+	fmt.Printf("%+v", p)
+}
+
+func (p person) updateName(newName string) {
+	splitName := strings.Split(newName, " ")
+	p.firstName = splitName[0]
+	p.lastName = strings.Join(splitName[1:], " ")
 }
