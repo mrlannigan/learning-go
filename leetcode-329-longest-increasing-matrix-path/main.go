@@ -11,59 +11,44 @@ const (
 
 type matrix [][]int
 
-type positionDirection struct {
-	position
+type position struct {
+	x           int
+	y           int
+	matrix      *matrix
+	connections []pathConnection
+}
+
+type pathConnection struct {
+	to        *position
+	from      *position
 	direction int
 }
 
-type position struct {
-	x int
-	y int
-	matrix
-	validDirections     canMoveDetermination
-	validDirectionCache positionValidDirectionCache
+type pathConnectionContainer struct {
+	connections []*[]pathConnection
 }
-
-type positionValidDirectionCache map[string]canMoveDetermination
 
 type movementModifier struct {
 	x int
 	y int
 }
 
-type canMoveDetermination struct {
-	Up    bool
-	Down  bool
-	Left  bool
-	Right bool
-}
-
-type directionPositions struct {
-	Up    []position
-	Down  []position
-	Left  []position
-	Right []position
-}
-
 func main() {
 	test := matrix{[]int{9, 9, 4}, []int{6, 6, 8}, []int{2, 1, 1}}
-	fmt.Println(longestIncreasingPath(test))
-
-	startpos := test.getStartPosition()
-	nextpos := startpos.movePosition(1, 0)
-	nextpos2 := nextpos.movePosition(2, 0)
-
-	fmt.Printf("%+v\n", startpos)
-
-	nextpos.determineValidDirections()
-	nextpos2.determineValidDirections()
-
-	fmt.Printf("%+v\n", nextpos)
-	fmt.Printf("%+v\n", nextpos2)
+	fmt.Printf("Longest path length of matrix %+v is %d\n", test, longestIncreasingPath(test))
 }
 
 func longestIncreasingPath(m matrix) int {
-	return m.getValue(0, 4)
+	positions := createPositionsFromMatrix(m)
+	allPaths := pathConnectionContainer{}
+
+	for _, position := range positions {
+		flattenConnections(position, []pathConnection{}, &allPaths)
+	}
+
+	longestPathLen, _ := allPaths.findLongestPath()
+
+	return longestPathLen
 }
 
 func newMovementModifier(direction int) movementModifier {
@@ -81,7 +66,6 @@ func newMovementModifier(direction int) movementModifier {
 }
 
 func (p position) canMove(direction int) bool {
-
 	movement := newMovementModifier(direction)
 
 	// if invalid direction
@@ -93,51 +77,6 @@ func (p position) canMove(direction int) bool {
 	nextValue := p.matrix.getMovementValue(p, movement)
 
 	return curValue < nextValue
-}
-
-func (p position) movePosition(x int, y int) position {
-	return position{
-		x:                   x,
-		y:                   y,
-		matrix:              p.matrix,
-		validDirectionCache: p.validDirectionCache,
-	}
-}
-
-// func (p position) findPaths(positionValues directionPositions) (directionPositions, bool) {
-// 	canMove := p.determineValidDirections()
-
-// 	if (canMove == canMoveDetermination{}) {
-// 		// no valid paths, break
-// 		return positionValues, false
-// 	}
-
-// 	if canMove.Up {
-// 		upPath := p.movePosition(Up).findPaths(positionValues)
-
-// 		if upPath != positionValues {
-
-// 			positionValues = append(positionValues, directionPositions{})
-// 		}
-// 	}
-// }
-
-func (p position) determineValidDirections() canMoveDetermination {
-	if (p.validDirections == canMoveDetermination{}) {
-		if (p.validDirectionCache[p.getCacheKey()] != canMoveDetermination{}) {
-			p.validDirections = p.validDirectionCache[p.getCacheKey()]
-		} else {
-			p.validDirections = canMoveDetermination{
-				Up:    p.canMove(Up),
-				Down:  p.canMove(Down),
-				Left:  p.canMove(Left),
-				Right: p.canMove(Right),
-			}
-			p.validDirectionCache[p.getCacheKey()] = p.validDirections
-		}
-	}
-
-	return p.validDirections
 }
 
 func (p position) currentValue() int {
@@ -169,32 +108,62 @@ func (m matrix) getMovementValue(p position, mm movementModifier) int {
 	return m.getValue(p.x+mm.x, p.y+mm.y)
 }
 
-func (m matrix) getStartPosition() position {
-	position := position{
-		x:                   0,
-		y:                   0,
-		matrix:              m,
-		validDirectionCache: make(positionValidDirectionCache),
+func (pcc pathConnectionContainer) findLongestPath() (int, []pathConnection) {
+	longestPathLen := 0
+	var longestPath []pathConnection
+
+	for _, pathConnections := range pcc.connections {
+		currentLen := len(*pathConnections)
+
+		if currentLen > longestPathLen {
+			longestPath = *pathConnections
+			longestPathLen = currentLen
+		}
 	}
 
-	position.determineValidDirections()
-	return position
+	return longestPathLen + 1, longestPath
 }
 
-// func createPositionsFromMatrix(m matrix) []position {
-// 	var queue []position
+func createPositionsFromMatrix(m matrix) []*position {
+	var queue []*position
+	cacheMap := map[string]*position{}
 
-// 	for i, j := range m {
-// 		for k := range j {
-// 			position := position{
-// 				x:      i,
-// 				y:      k,
-// 				matrix: m,
-// 			}
-// 			position.determineValidDirections()
-// 			queue = append(queue, position)
-// 		}
-// 	}
+	for i, j := range m {
+		for k := range j {
+			position := position{
+				x:      k,
+				y:      i,
+				matrix: &m,
+			}
+			cacheMap[position.getCacheKey()] = &position
+			queue = append(queue, &position)
+		}
+	}
 
-// 	return queue
-// }
+	for _, p := range queue {
+		for _, d := range []int{Up, Down, Left, Right} {
+			if p.canMove(d) {
+				mod := newMovementModifier(d)
+				p.connections = append(p.connections, pathConnection{
+					from:      p,
+					to:        cacheMap[fmt.Sprintf("%d-%d", p.x+mod.x, p.y+mod.y)],
+					direction: d,
+				})
+			}
+		}
+	}
+
+	return queue
+}
+
+func flattenConnections(position *position, currentPath []pathConnection, queue *pathConnectionContainer) {
+	if len(position.connections) == 0 {
+		return
+	}
+
+	for _, connection := range position.connections {
+		nextConnection := append(currentPath, connection)
+		queue.connections = append(queue.connections, &nextConnection)
+		flattenConnections(connection.to, nextConnection, queue)
+	}
+}
